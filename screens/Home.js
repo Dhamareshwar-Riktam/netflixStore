@@ -1,72 +1,95 @@
 import React, { useEffect, useState } from 'react';
 import {
     View,
-    Text,
     StyleSheet,
     ScrollView
 } from 'react-native';
 import { AntDesign } from '@expo/vector-icons';
 import {
-    List,
-    ListItem,
-    Left,
     Button,
     Icon,
-    Body,
-    Right,
     Checkbox,
-    Title,
     Heading,
     Fab,
     Card,
-    Subtitle,
     VStack,
     HStack,
     IconButton,
-    Container,
     Center,
-    Box
+    Box,
+    Spinner,
+    Text
 } from 'native-base';
 import AsyncStorage from '@react-native-community/async-storage';
 import { useIsFocused } from '@react-navigation/native';
 
 
 const Home = ({ navigation, route }) => {
-    const isFocused = useIsFocused();
     const [listOfSeasons, setListOfSeasons] = useState([]);
+    const [loading, setLoading] = useState(false);
+
+    const isFocused = useIsFocused();
 
     const getList = async () => {
         try {
+            setLoading(true);
             const storedValue = await AsyncStorage.getItem('@season_list');
-            if (!storedValue) return;
+            if (!storedValue) {
+                setLoading(false);
+                return setListOfSeasons([]);
+            }
 
-            setListOfSeasons(await JSON.parse(storedValue));
+            const list = await JSON.parse(storedValue);
+            setListOfSeasons(list);
+
+            setLoading(false);
         } catch (error) {
             console.warn(error);
         }
     };
-    useEffect(() => {
-        getList();
-    }, [isFocused]);
 
     const deleteSeason = async (id) => {
-        const newList = listOfSeasons.filter(season => season.id !== id);
+        const newList = await listOfSeasons.filter(season => season.id !== id);
         await AsyncStorage.setItem('@season_list', JSON.stringify(newList));
         setListOfSeasons(newList);
     };
 
     const markComplete = async (id) => {
-        const newList = listOfSeasons.map(season => {
-            if (season.id == id) {
-                season.isWatched = !season.isWatched;
-            }
-            return season
+        setListOfSeasons(listOfSeasons => {
+            return listOfSeasons.map(season => {
+                if (season.id === id) {
+                    season.isWatched = !season.isWatched;
+                }
+                return season;
+            });
         });
-        await AsyncStorage.setItem('@season_list', JSON.stringify(newList));
-        setListOfSeasons(newList);
+
+        await AsyncStorage.setItem('@season_list', JSON.stringify(listOfSeasons));
+        // const newList = listOfSeasons.map(season => {
+        //     if (season.id == id) {
+        //         season.isWatched = !season.isWatched;
+        //     }
+        //     return season;
+        // });
+        // setListOfSeasons(newList);
         // alert(JSON.stringify(listOfSeasons))
         // alert(JSON.stringify(newList))
     };
+
+    useEffect(() => {
+        getList();
+    }, [isFocused]);
+
+    if (loading) {
+        return (
+            <HStack space={2} justifyContent="center">
+                <Spinner accessibilityLabel="Loading posts" />
+                <Heading color="primary.500" fontSize="md">
+                    Loading
+                </Heading>
+            </HStack>
+        );
+    }
 
     return (
         <ScrollView contentContainerStyle={styles.container}>
@@ -85,35 +108,56 @@ const Home = ({ navigation, route }) => {
                                     justifyContent="space-between"
                                     alignItems="center"
                                     key={season.id + seasonI.toString()}
+                                    space={2}
+                                    flexWrap="wrap"
                                 >
+                                    <Button
+                                        style={styles.actionButton}
+                                        onPress={() => navigation.navigate('Edit', { season })}
+                                    >
+                                        <Icon color="white" size="sm" as={AntDesign} name="edit" />
+                                    </Button>
+                                    <Button
+                                        style={styles.actionButton}
+                                        colorScheme='danger'
+                                        onPress={() => deleteSeason(season.id)}
+                                        mt={2}
+                                    >
+                                        <Icon color="white" size="sm" as={AntDesign} name="delete" />
+                                    </Button>
+                                    <VStack
+                                        justifyContent="space-between"
+                                        alignItems="center"
+                                        flexWrap="wrap"
+                                    >
+                                        <Text
+                                            strikeThrough={season.isWatched}
+                                            _light={{
+                                                color: season.isWatched ? "gray.400" : "coolGray.800"
+                                            }} _dark={{
+                                                color: season.isWatched ? "gray.400" : "coolGray.50"
+                                            }}
+                                            style={styles.seasonName}
+                                            textAlign="center"
+                                        >
+                                            {season.name}
+                                        </Text>
+                                        <Text style={{ color: "#888", textAlign: 'center' }}>{season.totalNoSeason} seasons to watch</Text>
+
+                                    </VStack>
                                     <Checkbox
                                         isChecked={season.isWatched}
                                         onChange={() => markComplete(season.id)}
                                         value={season.id}
                                         accessibilityLabel={season.name}
                                     />
-                                    <Text
-                                        width="100%"
-                                        flexShrink={1}
-                                        textAlign="left"
-                                        mx="2"
-                                        strikeThrough={season.isWatched}
-                                        _light={{
-                                            color: season.isWatched ? "gray.400" : "coolGray.800"
-                                        }} _dark={{
-                                            color: season.isWatched ? "gray.400" : "coolGray.50"
-                                        }}
-                                    >
-                                        {season.name}
-                                    </Text>
-                                    <Text>{season.totalNoSeason}</Text>
-                                    <Text>{season.isWatched.toString()}</Text>
                                 </HStack>
                             ))}
                         </VStack>
                     </Box>
                 </Center>
-            )}
+            )
+            }
 
             <Fab
                 style={{ backgroundColor: "#5067FF" }}
@@ -137,7 +181,7 @@ const Home = ({ navigation, route }) => {
                     alert('cleared')
                 }}
             />
-        </ScrollView>
+        </ScrollView >
     );
 };
 
@@ -155,7 +199,7 @@ const styles = StyleSheet.create({
     container: {
         backgroundColor: '#1B262C',
         flex: 1,
-        justifyContent: 'center',
+        justifyContent: 'flex-start',
         alignItems: 'center'
     },
     heading: {
@@ -176,15 +220,3 @@ const styles = StyleSheet.create({
         marginBottom: 20
     }
 });
-
-
-
-
-
-
-//                                 <IconButton
-//                                     size="sm"
-//                                     colorScheme="trueGray"
-//                                     icon={<Icon name="minus" size="xs" color="trueGray.400" />}
-//                                     onPress={() => deleteSeason(season.id)}
-//                                 />

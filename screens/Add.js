@@ -51,7 +51,12 @@ const Add = ({ navigation, route }) => {
                 await AsyncStorage.setItem('@season_list', JSON.stringify(prevList));
             }
 
-            navigation.navigate('Home');
+            Snackbar.show({
+                text: 'Season added successfully',
+                textColor: 'white',
+                backgroundColor: '#1b262c'
+            });
+            return navigation.navigate('Home');
         } catch (error) {
             console.warn(error);
         }
